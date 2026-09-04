@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: deutsch
+      POSTGRES_PASSWORD: deutsch
+      POSTGRES_DB: deutsch_coach
+    ports:
+      - "5432:5432"
+    volumes:
+      - deutsch_coach_pgdata:/var/lib/postgresql/data
+
+volumes:
+  deutsch_coach_pgdata:

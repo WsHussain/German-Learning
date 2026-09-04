@@ -1,0 +1,194 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/*
+  Design system — "Studienbuch" (study ledger)
+  A Bauhaus-informed palette: warm paper / near-black ink as the neutral
+  base, with cobalt, ochre and brick-red used only as *functional* signal
+  colors (primary action, XP/reward, streak/urgency) — never decoration.
+  Squared-off radii, mono numerals for anything tracked or counted.
+*/
+
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-data);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Brand signal colors — used sparingly and functionally. */
+  --color-xp: var(--xp);
+  --color-xp-foreground: var(--xp-foreground);
+  --color-streak: var(--streak);
+  --color-streak-foreground: var(--streak-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  :root {
+    --background: #f6f3ec;
+    --foreground: #14171a;
+    --card: #fffefb;
+    --card-foreground: #14171a;
+    --popover: #fffefb;
+    --popover-foreground: #14171a;
+
+    --primary: #2452d9;
+    --primary-foreground: #fbfaf7;
+    --secondary: #eae6da;
+    --secondary-foreground: #14171a;
+    --muted: #edeae0;
+    --muted-foreground: #726c5f;
+    --accent: #eae6da;
+    --accent-foreground: #14171a;
+    --destructive: #c93a2e;
+    --destructive-foreground: #fbfaf7;
+
+    --border: #ddd7c8;
+    --input: #ddd7c8;
+    --ring: #2452d9;
+
+    --xp: #b9791a;
+    --xp-foreground: #fbfaf7;
+    --streak: #c93a2e;
+    --streak-foreground: #fbfaf7;
+    --success: #1f7a52;
+    --success-foreground: #fbfaf7;
+
+    --chart-1: #2452d9;
+    --chart-2: #b9791a;
+    --chart-3: #c93a2e;
+    --chart-4: #726c5f;
+    --chart-5: #14171a;
+
+    --sidebar: #14171a;
+    --sidebar-foreground: #ede9df;
+    --sidebar-primary: #2452d9;
+    --sidebar-primary-foreground: #fbfaf7;
+    --sidebar-accent: #1f2327;
+    --sidebar-accent-foreground: #ede9df;
+    --sidebar-border: #23272b;
+    --sidebar-ring: #2452d9;
+
+    --radius: 0.375rem;
+  }
+
+  .dark {
+    --background: #0e1114;
+    --foreground: #ede9df;
+    --card: #161a1e;
+    --card-foreground: #ede9df;
+    --popover: #161a1e;
+    --popover-foreground: #ede9df;
+
+    --primary: #6690ff;
+    --primary-foreground: #0b0d10;
+    --secondary: #1f242a;
+    --secondary-foreground: #ede9df;
+    --muted: #1b2025;
+    --muted-foreground: #938f83;
+    --accent: #1f242a;
+    --accent-foreground: #ede9df;
+    --destructive: #e2685c;
+    --destructive-foreground: #0b0d10;
+
+    --border: #262b31;
+    --input: #262b31;
+    --ring: #6690ff;
+
+    --xp: #dba13d;
+    --xp-foreground: #14171a;
+    --streak: #e2685c;
+    --streak-foreground: #14171a;
+    --success: #3fb27f;
+    --success-foreground: #0b0d10;
+
+    --chart-1: #6690ff;
+    --chart-2: #dba13d;
+    --chart-3: #e2685c;
+    --chart-4: #938f83;
+    --chart-5: #ede9df;
+
+    --sidebar: #0b0d10;
+    --sidebar-foreground: #ede9df;
+    --sidebar-primary: #6690ff;
+    --sidebar-primary-foreground: #0b0d10;
+    --sidebar-accent: #171b1e;
+    --sidebar-accent-foreground: #ede9df;
+    --sidebar-border: #1f2327;
+    --sidebar-ring: #6690ff;
+  }
+
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+  html {
+    @apply font-sans;
+  }
+
+  .font-mono,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

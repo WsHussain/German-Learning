@@ -1,0 +1,420 @@
+// Deutsch Coach — Prisma schema
+// Provider: PostgreSQL (see README for local setup with Docker or a hosted instance like Neon/Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Auth (NextAuth.js / Auth.js Prisma adapter models)
+// ──────────────────────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Core enums
+// ──────────────────────────────────────────────────────────────────────────
+
+enum CefrLevel {
+  A0
+  A1
+  A2
+  B1
+}
+
+enum LearningGoal {
+  SPEAK_GERMAN
+  MOVE_TO_GERMANY
+  WORK_IN_GERMANY
+  TRAVEL
+  GENERAL_LEARNING
+}
+
+enum TaskType {
+  DUOLINGO
+  NICOS_WEG
+  ANKI
+  YOUTUBE
+  TIKTOK
+  SPEAKING
+  VOCABULARY
+}
+
+enum TaskStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+}
+
+enum ContentSource {
+  YOUTUBE
+  TIKTOK
+}
+
+enum VideoStatus {
+  RECOMMENDED
+  SAVED
+  WATCHED
+  COMPLETED
+}
+
+enum VocabStatus {
+  NEW
+  LEARNING
+  REVIEW
+  MASTERED
+}
+
+enum RoadmapTopicType {
+  GRAMMAR
+  VOCABULARY
+  LISTENING
+  SPEAKING
+  READING
+  WRITING
+}
+
+enum XPReason {
+  DUOLINGO
+  NICOS_WEG
+  ANKI
+  VIDEO_WATCHED
+  SPEAKING
+  VOCABULARY
+  DAILY_BONUS
+  STREAK_BONUS
+  MANUAL_ADJUSTMENT
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// User & settings
+// ──────────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+
+  createdAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
+
+  onboardingCompleted Boolean @default(false)
+
+  currentLevel CefrLevel @default(A0)
+  targetLevel  CefrLevel @default(B1)
+
+  xpTotal        Int      @default(0)
+  currentStreak  Int      @default(0)
+  bestStreak     Int      @default(0)
+  lastActiveDate DateTime?
+  dayNumber      Int      @default(0)
+
+  accounts Account[]
+  sessions Session[]
+
+  settings          UserSettings?
+  dailyLogs         DailyLog[]
+  videoProgress     VideoProgress[]
+  vocabProgress     VocabularyProgress[]
+  speakingLogs      SpeakingLog[]
+  xpTransactions    XPTransaction[]
+  reminders         Reminder[]
+  weeklyGoals       WeeklyGoal[]
+}
+
+model UserSettings {
+  id      String @id @default(cuid())
+  userId  String @unique
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  goal               LearningGoal @default(GENERAL_LEARNING)
+  dailyGoalMinutes   Int          @default(60)
+  preferredStudyTime String       @default("08:00")
+  interfaceLanguage  String       @default("en")
+  theme              String       @default("system")
+
+  notificationsEnabled Boolean @default(true)
+  youtubeApiKey        String? // optional per-user override; falls back to env YOUTUBE_API_KEY
+
+  updatedAt DateTime @updatedAt
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Roadmap (A0 → B1 curriculum, 6-month structure)
+// ──────────────────────────────────────────────────────────────────────────
+
+model RoadmapWeek {
+  id        String    @id @default(cuid())
+  level     CefrLevel
+  weekIndex Int // week number within the level, 1-based
+  title     String
+  focus     String // short description of the week's theme
+  order     Int // global order across the whole 6-month roadmap
+
+  topics    RoadmapTopic[]
+  dailyLogs DailyLog[]
+
+  @@unique([level, weekIndex])
+}
+
+model RoadmapTopic {
+  id            String           @id @default(cuid())
+  roadmapWeekId String
+  roadmapWeek   RoadmapWeek      @relation(fields: [roadmapWeekId], references: [id], onDelete: Cascade)
+  type          RoadmapTopicType
+  title         String
+  description   String
+  order         Int
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Daily routine: generated log + tasks per user per calendar day
+// ──────────────────────────────────────────────────────────────────────────
+
+model DailyLog {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date   DateTime @db.Date // one row per user per calendar date
+
+  dayNumber Int // "Day 27" — sequential count of active learning days for this user
+
+  roadmapWeekId String?
+  roadmapWeek   RoadmapWeek? @relation(fields: [roadmapWeekId], references: [id])
+
+  goalMinutes      Int @default(60)
+  completedMinutes Int @default(0)
+  xpEarned         Int @default(0)
+
+  allTasksCompleted Boolean @default(false)
+  bonusAwarded      Boolean @default(false)
+
+  tasks DailyTask[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model DailyTask {
+  id         String     @id @default(cuid())
+  dailyLogId String
+  dailyLog   DailyLog   @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
+
+  type            TaskType
+  title           String
+  durationMinutes Int
+  xpValue         Int
+  order           Int
+  externalUrl     String?
+
+  status       TaskStatus @default(PENDING)
+  completedAt  DateTime?
+  actualMinutes Int?
+
+  videoId    String?
+  video      Video? @relation(fields: [videoId], references: [id])
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Video content (YouTube + TikTok)
+// ──────────────────────────────────────────────────────────────────────────
+
+model Video {
+  id         String        @id @default(cuid())
+  source     ContentSource
+  externalId String? // YouTube video ID, or TikTok handle/post id
+  url        String
+
+  title       String
+  description String?
+  channelName String
+  thumbnailUrl String?
+  durationSeconds Int?
+
+  level              CefrLevel
+  topic              String
+  vocabDifficulty    Int       @default(3) // 1-5
+  listeningDifficulty Int      @default(3) // 1-5
+
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  dailyTasks DailyTask[]
+  progress   VideoProgress[]
+
+  @@unique([source, url])
+  @@index([level, topic])
+}
+
+model VideoProgress {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId String
+  video   Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  status     VideoStatus @default(RECOMMENDED)
+  savedAt    DateTime?
+  watchedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, videoId])
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Vocabulary + spaced repetition
+// ──────────────────────────────────────────────────────────────────────────
+
+model VocabularyWord {
+  id                String    @id @default(cuid())
+  german            String
+  english           String
+  article           String? // "der" | "die" | "das"
+  exampleSentence   String
+  exampleTranslation String
+  pronunciation     String? // IPA or phonetic hint
+  level             CefrLevel
+  topic             String
+  difficulty        Int       @default(1) // 1-5
+
+  progress VocabularyProgress[]
+
+  @@index([level, topic])
+}
+
+model VocabularyProgress {
+  id     String         @id @default(cuid())
+  userId String
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wordId String
+  word   VocabularyWord @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  status         VocabStatus @default(NEW)
+  correctCount   Int         @default(0)
+  incorrectCount Int         @default(0)
+  easeFactor     Float       @default(2.5) // SM-2 ease factor
+  intervalDays   Int         @default(0)
+  lastReviewedAt DateTime?
+  nextReviewAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, wordId])
+  @@index([userId, nextReviewAt])
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Speaking practice
+// ──────────────────────────────────────────────────────────────────────────
+
+model SpeakingSentence {
+  id      String    @id @default(cuid())
+  german  String
+  english String
+  level   CefrLevel
+  topic   String
+
+  logs SpeakingLog[]
+}
+
+model SpeakingLog {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentenceId String
+  sentence   SpeakingSentence @relation(fields: [sentenceId], references: [id], onDelete: Cascade)
+
+  practicedAt      DateTime @default(now())
+  selfRatedCorrect Boolean?
+
+  @@index([userId, practicedAt])
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Gamification & scheduling
+// ──────────────────────────────────────────────────────────────────────────
+
+model XPTransaction {
+  id     String   @id @default(cuid())
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount Int
+  reason XPReason
+  note   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Reminder {
+  id      String  @id @default(cuid())
+  userId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label   String
+  time    String // "HH:mm"
+  enabled Boolean @default(true)
+  days    String  @default("1,2,3,4,5,6,7") // comma-separated ISO weekdays
+
+  taskType TaskType?
+}
+
+model WeeklyGoal {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStartDate  DateTime @db.Date
+
+  targetDays       Int @default(7)
+  completedDays    Int @default(0)
+  targetMinutes    Int @default(420)
+  completedMinutes Int @default(0)
+
+  @@unique([userId, weekStartDate])
+}
